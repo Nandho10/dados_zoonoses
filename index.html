@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vigilância e Controle do Aedes aegypti — Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Global Drag & Drop Overlay -->
+  <div id="dropzone-overlay" class="dropzone-overlay" aria-hidden="true">
+    <div class="dropzone-box">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f2811d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-inline:auto">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="17 8 12 3 7 8" />
+        <line x1="12" y1="3" x2="12" y2="15" />
+      </svg>
+      <h2>Solte o arquivo CSV ou XLSX aqui</h2>
+      <p>O painel será atualizado automaticamente com os novos dados.</p>
+    </div>
+  </div>
+
+  <main class="dashboard-shell">
+    <!-- Top Header & Controls -->
+    <header class="dashboard-header">
+      <div class="header-titles">
+        <h1>Vigilância e Controle do Aedes aegypti</h1>
+        <p class="header-subtitle">
+          <span>Visitas domiciliares por situação do imóvel e bairro</span>
+          <span class="sep">|</span>
+          <span id="period-label">jan/2024 – ago/2026</span>
+          <span id="dataset-source-pill" class="dataset-pill" title="Fonte de dados ativa">Vigilância e Controle de Aedes aegypti Domiciliares.xlsx</span>
+        </p>
+      </div>
+
+      <div class="header-controls">
+        <div class="control-group">
+          <label for="filter-year">Ano:</label>
+          <select id="filter-year" aria-label="Filtrar por ano">
+            <option value="ALL">Todos</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="filter-bairro">Bairro:</label>
+          <select id="filter-bairro" aria-label="Filtrar por bairro">
+            <option value="ALL">Todos os bairros</option>
+          </select>
+        </div>
+
+        <button type="button" id="btn-clear-filters" class="btn btn-ghost" style="display:none" title="Limpar filtros ativos">
+          ✕ Limpar filtro
+        </button>
+
+        <button type="button" class="btn" commandfor="explorer-dialog" command="show-modal">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="3" y1="9" x2="21" y2="9" />
+            <line x1="9" y1="21" x2="9" y2="9" />
+          </svg>
+          Tabela Completa / Exportar
+        </button>
+
+        <button type="button" class="btn btn-accent" commandfor="upload-dialog" command="show-modal">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          Atualizar CSV / XLSX
+        </button>
+
+        <div class="layout-ref-note">
+          <label style="cursor:pointer; display:inline-flex; align-items:center; gap:5px;" title="Mostrar ou ocultar os selos azuis de tipo de gráfico">
+            <input type="checkbox" id="toggle-type-badges" checked style="accent-color:#1d6fb8;" />
+            <span><strong>REFERÊNCIA DE LAYOUT</strong>Os selos azuis indicam o tipo de gráfico</span>
+          </label>
+        </div>
+      </div>
+    </header>
+
+    <!-- Row 1: 4 Counter KPIs -->
+    <section class="kpi-grid" aria-label="Indicadores principais">
+      <article class="card kpi-card accent-orange">
+        <div class="kpi-top">
+          <span class="kpi-label">Imóveis Visitados</span>
+          <span class="type-badge">Contador</span>
+        </div>
+        <div id="kpi-visitados" class="kpi-value">33.540</div>
+        <div class="kpi-sub">total no período</div>
+      </article>
+
+      <article class="card kpi-card accent-navy">
+        <div class="kpi-top">
+          <span class="kpi-label">Imóveis Trabalhados</span>
+          <span class="type-badge">Contador</span>
+        </div>
+        <div id="kpi-trabalhados" class="kpi-value">20.484</div>
+        <div id="kpi-trabalhados-sub" class="kpi-sub">61% dos visitados</div>
+      </article>
+
+      <article class="card kpi-card accent-blue">
+        <div class="kpi-top">
+          <span class="kpi-label">Imóveis Fechados</span>
+          <span class="type-badge">Contador</span>
+        </div>
+        <div id="kpi-fechados" class="kpi-value">12.107</div>
+        <div id="kpi-fechados-sub" class="kpi-sub">36% dos visitados</div>
+      </article>
+
+      <article class="card kpi-card accent-light">
+        <div class="kpi-top">
+          <span class="kpi-label">Bairros Atendidos</span>
+          <span class="type-badge">Contador</span>
+        </div>
+        <div id="kpi-bairros" class="kpi-value">81</div>
+        <div class="kpi-sub">com ao menos 1 visita</div>
+      </article>
+    </section>
+
+    <!-- Row 2: Gauge (2), Donut (3), Horizontal Bars (4) -->
+    <section class="middle-grid" aria-label="Aproveitamento, motivos e concentração por bairro">
+      <!-- Card 2: Ponteiro -->
+      <article class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="step-badge">2</span>
+            <div class="card-heading">
+              <h2 id="card2-title" class="card-title">61% dos imóveis trabalhados</h2>
+              <p class="card-subtitle">Aproveitamento das visitas (trabalhados ÷ visitados)</p>
+            </div>
+          </div>
+          <span class="type-badge">Ponteiro</span>
+        </div>
+
+        <div class="gauge-body">
+          <div id="gauge-svg-container" class="gauge-svg-wrap"></div>
+          <div id="gauge-pct-value" class="gauge-big-pct">61%</div>
+          <div id="gauge-meta-note" class="gauge-meta-note" title="Clique para definir uma meta percentual de aproveitamento">
+            Defina a meta no software para colorir as faixas
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 3: Rosca -->
+      <article class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="step-badge">3</span>
+            <div class="card-heading">
+              <h2 id="card3-title" class="card-title">Imóvel fechado é 93% dos não trabalhados</h2>
+              <p class="card-subtitle">Motivos pelos quais o imóvel não foi trabalhado</p>
+            </div>
+          </div>
+          <span class="type-badge">Rosca</span>
+        </div>
+
+        <div class="donut-body">
+          <div id="donut-svg-container" class="donut-svg-wrap"></div>
+          <div id="donut-legend-container" class="donut-legend"></div>
+        </div>
+      </article>
+
+      <!-- Card 4: Barra -->
+      <article class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="step-badge">4</span>
+            <div class="card-heading">
+              <h2 id="card4-title" class="card-title">3 bairros concentram 18% das visitas</h2>
+              <p class="card-subtitle">Top 8 bairros por imóveis visitados</p>
+            </div>
+          </div>
+          <span class="type-badge">Barra</span>
+        </div>
+
+        <div id="top-bars-container" class="bars-list"></div>
+      </article>
+    </section>
+
+    <!-- Row 3: Line Chart (5), Table (6), Insights (7) -->
+    <section class="bottom-grid" aria-label="Série mensal, bairros críticos e conclusões">
+      <!-- Card 5: Linha -->
+      <article class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="step-badge">5</span>
+            <div class="card-heading">
+              <h2 id="card5-title" class="card-title">Fev–mar concentram 78% das visitas de 2024–2025</h2>
+              <p class="card-subtitle">Imóveis visitados por mês (meses sem registro = 0)</p>
+            </div>
+          </div>
+          <span class="type-badge">Linha</span>
+        </div>
+
+        <div class="line-chart-wrap">
+          <div id="line-chart-tooltip" class="chart-tooltip" role="status" aria-live="polite"></div>
+          <div id="line-chart-svg-container"></div>
+        </div>
+      </article>
+
+      <!-- Card 6: Tabela -->
+      <article class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="step-badge">6</span>
+            <div class="card-heading">
+              <h2 class="card-title">Bairros com mais imóveis fechados</h2>
+              <p id="card6-subtitle" class="card-subtitle">Bairros com 500+ visitas, ordenados por % de fechados</p>
+            </div>
+          </div>
+          <span class="type-badge">Tabela</span>
+        </div>
+
+        <div tabindex="0" role="region" aria-labelledby="closed-table-caption" class="table-wrapper">
+          <table class="data-table">
+            <caption id="closed-table-caption" class="sr-only">Bairros com maior percentual de imóveis fechados</caption>
+            <thead>
+              <tr>
+                <th scope="col">Bairro</th>
+                <th scope="col" class="num">Visitados</th>
+                <th scope="col" class="num">Fechados</th>
+                <th scope="col" class="num">% Fech.</th>
+              </tr>
+            </thead>
+            <tbody id="closed-table-body"></tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <span id="closed-table-avg">Média geral: 36% de imóveis fechados</span>
+          <button type="button" id="btn-toggle-closed-rows" class="btn btn-ghost" style="font-style:normal; font-size:0.75rem; padding:2px 7px;">
+            Ver todos
+          </button>
+        </div>
+      </article>
+
+      <!-- Card 7: Texto -->
+      <article class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="step-badge orange">7</span>
+            <div class="card-heading">
+              <h2 class="card-title">Conclusão e próximos passos</h2>
+            </div>
+          </div>
+          <span class="type-badge">Texto</span>
+        </div>
+
+        <div id="insights-container" class="insights-list"></div>
+      </article>
+    </section>
+  </main>
+
+  <!-- Modal 1: Upload / Update via CSV or XLSX -->
+  <dialog id="upload-dialog" class="app-dialog" aria-labelledby="upload-dialog-title">
+    <div class="dialog-header">
+      <h2 id="upload-dialog-title">Atualizar Dados por CSV ou XLSX</h2>
+      <button type="button" class="btn btn-ghost" commandfor="upload-dialog" command="close" aria-label="Fechar janela">✕</button>
+    </div>
+
+    <div class="dialog-body">
+      <label class="upload-drop-area" for="file-upload-input">
+        <input type="file" id="file-upload-input" accept=".xlsx,.xls,.csv,.txt,.ods" />
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#1d6fb8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-inline:auto; margin-block-end:8px;">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="12" y1="18" x2="12" y2="12" />
+          <polyline points="9 15 12 12 15 15" />
+        </svg>
+        <div style="font-weight:700; color:var(--navy-dark); font-size:0.95rem;">
+          Clique para selecionar um arquivo <code>.xlsx</code> ou <code>.csv</code>
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-block-start:4px;">
+          Ou arraste e solte o arquivo em qualquer lugar da tela
+        </div>
+      </label>
+
+      <div class="upload-mode-options">
+        <strong style="width:100%; font-size:0.8rem; color:var(--navy-dark);">Modo de atualização:</strong>
+        <label>
+          <input type="radio" name="upload-mode" value="replace" checked />
+          Substituir toda a base pelo novo arquivo
+        </label>
+        <label>
+          <input type="radio" name="upload-mode" value="append" />
+          Acrescentar (somar novos lançamentos à base atual)
+        </label>
+      </div>
+
+      <div id="upload-status-banner" class="status-banner" role="alert"></div>
+
+      <div class="schema-hint">
+        <strong>Colunas reconhecidas automaticamente (CSV ou Excel):</strong><br />
+        <code>DATA</code>, <code>MÊS</code>, <code>ANO</code>, <code>BAIRROS</code>, <code>Imóveis Trabalhados</code>, <code>Imóveis Fechados</code>, <code>Imóveis Desocupados</code>, <code>Imóveis de Temporada</code>, <code>Imóveis Parciais</code>, <code>Imóveis Recusa</code>.<br />
+        <span style="display:block; margin-block-start:4px;">
+          💡 <em>Dica:</em> Caso envie apenas a coluna <code>DATA</code> (sem <code>MÊS</code> ou <code>ANO</code>), o sistema extrai mês e ano automaticamente. Arquivos CSV separados por <code>;</code> ou <code>,</code> (UTF-8 ou ANSI do Excel) são detectados automaticamente.
+        </span>
+      </div>
+    </div>
+
+    <div class="dialog-footer">
+      <button type="button" id="btn-restore-original" class="btn" title="Voltar para a planilha original de 33.540 visitas">
+        ↺ Restaurar Planilha Original
+      </button>
+      <button type="button" class="btn btn-primary" commandfor="upload-dialog" command="close">
+        Concluído
+      </button>
+    </div>
+  </dialog>
+
+  <!-- Modal 2: Full Data Explorer & Export -->
+  <dialog id="explorer-dialog" class="app-dialog wide" aria-labelledby="explorer-dialog-title">
+    <div class="dialog-header">
+      <h2 id="explorer-dialog-title">Consolidado Completo por Bairro (81 Bairros)</h2>
+      <button type="button" class="btn btn-ghost" commandfor="explorer-dialog" command="close" aria-label="Fechar janela">✕</button>
+    </div>
+
+    <div class="dialog-body">
+      <div tabindex="0" role="region" aria-labelledby="explorer-table-caption" class="table-wrapper" style="max-block-size: 56dvh;">
+        <table class="data-table">
+          <caption id="explorer-table-caption" class="sr-only">Tabela consolidada de todos os bairros atendidos</caption>
+          <thead>
+            <tr>
+              <th scope="col">Bairro</th>
+              <th scope="col" class="num">Visitados</th>
+              <th scope="col" class="num">Trabalhados</th>
+              <th scope="col" class="num">Fechados</th>
+              <th scope="col" class="num">Desocupados</th>
+              <th scope="col" class="num">Recusa</th>
+              <th scope="col" class="num">Parciais / Temp.</th>
+            </tr>
+          </thead>
+          <tbody id="explorer-bairros-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="dialog-footer">
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <button type="button" id="btn-export-xlsx" class="btn btn-primary">
+          ⬇ Baixar Base (.XLSX)
+        </button>
+        <button type="button" id="btn-export-csv" class="btn">
+          ⬇ Baixar Base (.CSV)
+        </button>
+      </div>
+      <button type="button" class="btn" commandfor="explorer-dialog" command="close">
+        Fechar
+      </button>
+    </div>
+  </dialog>
+
+  <script type="module">
+    // Feature detect 'commandForElement' on HTMLButtonElement.prototype per modern-web-guidance
+    if (!('commandForElement' in HTMLButtonElement.prototype)) {
+      import('https://esm.run/invokers-polyfill').catch(() => {});
+    }
+  </script>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
