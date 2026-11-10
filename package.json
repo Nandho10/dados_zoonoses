@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Dashboard de Vigilância e Controle do Aedes aegypti",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.local.js"
   },
   "keywords": [],
   "author": "",

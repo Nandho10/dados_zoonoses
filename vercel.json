@@ -1,13 +1,5 @@
 {
-  "version": 2,
-  "cleanUrls": true,
-  "routes": [
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
+  "buildCommand": null,
+  "outputDirectory": null,
+  "framework": null
 }
