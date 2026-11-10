@@ -1,16 +1,13 @@
 {
   "name": "vigilancia_e_controle_de_aedes_aegypti",
   "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
+  "description": "Dashboard de Vigilância e Controle do Aedes aegypti",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "xlsx": "^0.18.5"
   }
